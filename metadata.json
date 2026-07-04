@@ -1,0 +1,6 @@
+{
+  "name": "Clima Frio",
+  "description": "Sistema de gestão para empresas e técnicos de refrigeração e ar-condicionado. Controle de clientes, equipamentos, agenda, ordens de serviço e financeiro.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
