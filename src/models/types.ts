@@ -55,6 +55,11 @@ export interface PecaUtilizada {
   valorUnitario: number;
 }
 
+export interface ChecklistItem {
+  item: string;
+  verificado: boolean;
+}
+
 export interface OrdemServico {
   id: string; // Formato: OS-XXXX
   clienteId: string;
@@ -71,6 +76,7 @@ export interface OrdemServico {
   formaPagamento?: 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'faturado';
   fotos?: string[];
   assinatura?: string;
+  checklistFinal?: ChecklistItem[];
 }
 
 export interface TransacaoFinanceira {

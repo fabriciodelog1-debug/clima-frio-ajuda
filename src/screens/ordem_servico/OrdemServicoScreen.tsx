@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Cliente, Equipamento, OrdemServico, PecaUtilizada, OSStatus } from '../../models/types';
-import { FileText, Plus, Search, Edit2, Trash2, Calendar, DollarSign, User, FileSpreadsheet, Printer, X, PlusCircle, MinusCircle, Eye, MessageSquare } from 'lucide-react';
+import { Cliente, Equipamento, OrdemServico, PecaUtilizada, OSStatus, ChecklistItem } from '../../models/types';
+import { FileText, Plus, Search, Edit2, Trash2, Calendar, DollarSign, User, FileSpreadsheet, Printer, X, PlusCircle, MinusCircle, Eye, MessageSquare, CheckSquare } from 'lucide-react';
 
 const SignaturePad = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -173,6 +173,11 @@ export default function OrdensServicoTab({
   const [tecnicoResponsavel, setTecnicoResponsavel] = useState('');
   const [formaPagamento, setFormaPagamento] = useState<OrdemServico['formaPagamento']>('pix');
   const [fotos, setFotos] = useState<string[]>([]);
+  const [checklistFinal, setChecklistFinal] = useState<ChecklistItem[]>([
+    { item: '', verificado: false },
+    { item: '', verificado: false },
+    { item: '', verificado: false }
+  ]);
 
   // Helpers for temporary part adding
   const [tempPecaNome, setTempPecaNome] = useState('');
@@ -225,6 +230,11 @@ export default function OrdensServicoTab({
     setTecnicoResponsavel(TECNICOS_PRESET[0]);
     setFormaPagamento('pix');
     setFotos([]);
+    setChecklistFinal([
+      { item: '', verificado: false },
+      { item: '', verificado: false },
+      { item: '', verificado: false }
+    ]);
     setIsFormOpen(true);
   };
 
@@ -241,6 +251,11 @@ export default function OrdensServicoTab({
     setTecnicoResponsavel(os.tecnicoResponsavel);
     setFormaPagamento(os.formaPagamento || 'pix');
     setFotos(os.fotos || []);
+    setChecklistFinal(os.checklistFinal && os.checklistFinal.length === 3 ? os.checklistFinal : [
+      { item: os.checklistFinal?.[0]?.item || '', verificado: os.checklistFinal?.[0]?.verificado || false },
+      { item: os.checklistFinal?.[1]?.item || '', verificado: os.checklistFinal?.[1]?.verificado || false },
+      { item: os.checklistFinal?.[2]?.item || '', verificado: os.checklistFinal?.[2]?.verificado || false }
+    ]);
     setIsFormOpen(true);
   };
 
@@ -282,7 +297,8 @@ export default function OrdensServicoTab({
       valorTotal: liveGrandTotal,
       tecnicoResponsavel,
       formaPagamento: status === 'concluido' ? formaPagamento : undefined,
-      fotos
+      fotos,
+      checklistFinal
     };
 
     if (editingOS) {
@@ -612,6 +628,79 @@ export default function OrdensServicoTab({
                       rows={3}
                       className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white resize-none"
                     />
+                  </div>
+
+                  {/* Checklist de Serviços Realizados (3 Continhas/Itens Mexidos) */}
+                  <div className="bg-frost-50/50 border border-frost-100 p-4 rounded-xl space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <CheckSquare className="w-4 h-4 text-frost-600" />
+                      <label className="block text-xs font-bold text-gray-800 uppercase tracking-wider">
+                        Checklist de Itens Mexidos (Até 3 itens)
+                      </label>
+                    </div>
+                    <p className="text-[10px] text-gray-500 leading-tight">
+                      Marque e descreva o que foi mexido no equipamento para que o cliente tenha clareza de tudo o que foi realizado na finalização.
+                    </p>
+
+                    <div className="space-y-2">
+                      {checklistFinal.map((chk, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={chk.verificado}
+                            onChange={(e) => {
+                              const updated = [...checklistFinal];
+                              updated[idx].verificado = e.target.checked;
+                              setChecklistFinal(updated);
+                            }}
+                            className="w-4 h-4 text-frost-600 border-gray-300 rounded focus:ring-frost-500 cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={chk.item}
+                            onChange={(e) => {
+                              const updated = [...checklistFinal];
+                              updated[idx].item = e.target.value;
+                              if (e.target.value.trim() !== '' && !updated[idx].verificado) {
+                                updated[idx].verificado = true;
+                              }
+                              setChecklistFinal(updated);
+                            }}
+                            placeholder={`Item ${idx + 1} mexido (ex: Troca de capacitor)`}
+                            className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-frost-500"
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Quick Tags */}
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      <span className="text-[9px] text-gray-400 font-bold self-center mr-1">Sugestões:</span>
+                      {[
+                        'Higienização completa',
+                        'Troca de capacitor',
+                        'Ajuste de dreno',
+                        'Carga de gás',
+                        'Reaperto elétrico',
+                        'Teste de rendimento'
+                      ].map((sug) => (
+                        <button
+                          key={sug}
+                          type="button"
+                          onClick={() => {
+                            const emptyIdx = checklistFinal.findIndex(c => !c.item);
+                            const targetIdx = emptyIdx !== -1 ? emptyIdx : 0;
+                            const updated = [...checklistFinal];
+                            updated[targetIdx].item = sug;
+                            updated[targetIdx].verificado = true;
+                            setChecklistFinal(updated);
+                          }}
+                          className="text-[9px] bg-white border border-gray-200 hover:border-frost-300 text-gray-600 px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+                        >
+                          + {sug}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Foto Upload Simulation */}
@@ -976,6 +1065,30 @@ export default function OrdensServicoTab({
                       <div className="bg-emerald-50/50 p-3 rounded border border-emerald-100">
                         <strong className="block text-xs text-emerald-900 uppercase">Laudo Técnico / Serviço Realizado:</strong>
                         <p className="text-sm text-gray-800 leading-relaxed mt-1">{activeReceiptOS.descricaoServico}</p>
+                      </div>
+                    )}
+
+                    {/* Checklist of what was touched/worked on */}
+                    {activeReceiptOS.checklistFinal && activeReceiptOS.checklistFinal.some(c => c.item.trim() !== '') && (
+                      <div className="bg-slate-50 p-3 rounded border border-slate-200">
+                        <strong className="block text-xs text-slate-700 uppercase mb-2">Checklist de Itens Mexidos / Verificados:</strong>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          {activeReceiptOS.checklistFinal.map((chk, idx) => {
+                            if (!chk.item.trim()) return null;
+                            return (
+                              <div key={idx} className="flex items-center gap-2 text-xs text-gray-800 bg-white px-2.5 py-1.5 rounded border border-gray-150">
+                                <span className={`w-3.5 h-3.5 rounded flex items-center justify-center border font-bold text-[9px] shrink-0 ${
+                                  chk.verificado 
+                                    ? 'bg-emerald-500 border-emerald-600 text-white' 
+                                    : 'bg-gray-100 border-gray-300 text-gray-400'
+                                }`}>
+                                  {chk.verificado ? '✓' : ' '}
+                                </span>
+                                <span className="font-medium truncate">{chk.item}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>

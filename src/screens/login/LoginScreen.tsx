@@ -7,31 +7,40 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
-  const [selectedUser, setSelectedUser] = useState('Fabrício Santos');
+  const [operatorName, setOperatorName] = useState('Fabrício Santos');
+  const [operatorRole, setOperatorRole] = useState<'admin' | 'tecnico' | 'gerente'>('admin');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
 
-  const OPERATORS = [
-    { name: 'Fabrício Santos', role: 'admin' as const, title: 'Responsável Técnico (CREA)', avatar: 'FS' },
-    { name: 'Rodrigo Lima', role: 'tecnico' as const, title: 'Técnico de Campo Senior', avatar: 'RL' },
-    { name: 'Felipe Santos', role: 'tecnico' as const, title: 'Técnico Operacional Júnior', avatar: 'FS' },
-    { name: 'Ana Paula Dias', role: 'gerente' as const, title: 'Gestão & Backoffice', avatar: 'AD' }
+  const SUGGESTED_OPERATORS = [
+    { name: 'Fabrício Santos', role: 'admin' as const, title: 'Responsável Técnico (CREA)' },
+    { name: 'Rodrigo Lima', role: 'tecnico' as const, title: 'Técnico de Campo Senior' },
+    { name: 'Felipe Santos', role: 'tecnico' as const, title: 'Técnico Operacional Júnior' },
+    { name: 'Ana Paula Dias', role: 'gerente' as const, title: 'Gestão & Backoffice' }
   ];
+
+  const handleSelectSuggested = (op: { name: string; role: 'admin' | 'tecnico' | 'gerente' }) => {
+    setOperatorName(op.name);
+    setOperatorRole(op.role);
+    setError('');
+  };
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const op = OPERATORS.find(o => o.name === selectedUser);
-    if (!op) return;
+    if (!operatorName.trim()) {
+      setError('Por favor, digite o seu nome para acessar.');
+      return;
+    }
 
-    // Simulated simple access security (optional but very cool)
+    // Simulated simple access security
     if (pin.length > 0 && pin !== '1234') {
       setError('PIN incorreto. (Dica de homologação: Use o PIN 1234 ou deixe em branco)');
       return;
     }
 
     onLogin({
-      name: op.name,
-      role: op.role
+      name: operatorName.trim(),
+      role: operatorRole
     });
   };
 
@@ -68,33 +77,69 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           <div className="space-y-1.5 text-center">
             <h2 className="text-base font-bold text-slate-100 flex items-center justify-center gap-1.5">
               <KeyRound className="w-4 h-4 text-frost-400" />
-              Autenticação de Operador
+              Acesso do Operador
             </h2>
-            <p className="text-xs text-slate-400">Escolha seu perfil técnico homologado para acessar a escala.</p>
+            <p className="text-xs text-slate-400">Digite seu próprio nome ou selecione um perfil abaixo para acessar.</p>
           </div>
 
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             {/* Operator Selection */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Selecione seu Nome</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Seu Nome Completo</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
                   <User className="w-4 h-4" />
                 </span>
-                <select
-                  value={selectedUser}
+                <input
+                  type="text"
+                  required
+                  value={operatorName}
                   onChange={(e) => {
-                    setSelectedUser(e.target.value);
+                    setOperatorName(e.target.value);
                     setError('');
                   }}
-                  className="block w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-frost-500"
-                >
-                  {OPERATORS.map(op => (
-                    <option key={op.name} value={op.name}>
-                      {op.name} ({op.title})
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Digite seu nome completo"
+                  className="block w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-frost-500 placeholder-slate-700"
+                />
+              </div>
+            </div>
+
+            {/* Technical Role Selection */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cargo / Função Técnica</label>
+              <select
+                value={operatorRole}
+                onChange={(e) => {
+                  setOperatorRole(e.target.value as 'admin' | 'tecnico' | 'gerente');
+                  setError('');
+                }}
+                className="block w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-frost-500"
+              >
+                <option value="admin">Responsável Técnico (CREA) / Administrador</option>
+                <option value="tecnico">Técnico de Campo</option>
+                <option value="gerente">Gestão & Backoffice / Gerente</option>
+              </select>
+            </div>
+
+            {/* Suggested Profiles Quick Select */}
+            <div className="space-y-2 pt-1 pb-1">
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Perfis Sugeridos:</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                {SUGGESTED_OPERATORS.map((op) => (
+                  <button
+                    key={op.name}
+                    type="button"
+                    onClick={() => handleSelectSuggested(op)}
+                    className={`p-1.5 rounded-lg text-left border text-[10px] transition-all cursor-pointer ${
+                      operatorName === op.name 
+                        ? 'bg-frost-950/40 border-frost-500/80 text-frost-300' 
+                        : 'bg-slate-950/50 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="font-bold truncate">{op.name}</div>
+                    <div className="text-[8px] opacity-70 truncate">{op.title}</div>
+                  </button>
+                ))}
               </div>
             </div>
 
