@@ -104,6 +104,8 @@ interface OrdensServicoTabProps {
   addOrdemServico: (o: Omit<OrdemServico, 'id' | 'dataAbertura'>) => void;
   updateOrdemServico: (id: string, o: Partial<OrdemServico>) => void;
   deleteOrdemServico: (id: string) => void;
+  addCliente?: (c: Omit<Cliente, 'id' | 'dataCriacao'>) => Cliente;
+  addEquipamento?: (e: Omit<Equipamento, 'id'>) => Equipamento;
 }
 
 export default function OrdensServicoTab({
@@ -113,7 +115,9 @@ export default function OrdensServicoTab({
   equipamentos,
   addOrdemServico,
   updateOrdemServico,
-  deleteOrdemServico
+  deleteOrdemServico,
+  addCliente,
+  addEquipamento
 }: OrdensServicoTabProps) {
   // Dynamic Company Settings loading
   const [companySettings, setCompanySettings] = useState(() => {
@@ -164,7 +168,17 @@ export default function OrdensServicoTab({
 
   // Form states
   const [clienteId, setClienteId] = useState('');
+  const [isCustomClient, setIsCustomClient] = useState(false);
+  const [customClienteNome, setCustomClienteNome] = useState('');
+  
   const [equipamentoId, setEquipamentoId] = useState('');
+  const [isCustomEquipment, setIsCustomEquipment] = useState(false);
+  const [customEquipamentoTipo, setCustomEquipamentoTipo] = useState('Ar Condicionado Split Hi-Wall');
+  const [customEquipamentoMarca, setCustomEquipamentoMarca] = useState('LG');
+  const [customEquipamentoModelo, setCustomEquipamentoModelo] = useState('');
+  const [customEquipamentoCapacidade, setCustomEquipamentoCapacidade] = useState('12.000 BTU');
+  const [customEquipamentoLocalizacao, setCustomEquipamentoLocalizacao] = useState('');
+
   const [status, setStatus] = useState<OSStatus>('orcamento');
   const [descricaoProblema, setDescricaoProblema] = useState('');
   const [descricaoServico, setDescricaoServico] = useState('');
@@ -221,7 +235,15 @@ export default function OrdensServicoTab({
   const handleOpenCreate = () => {
     setEditingOS(null);
     setClienteId(clientes[0]?.id || '');
+    setIsCustomClient(clientes.length === 0);
+    setCustomClienteNome('');
     setEquipamentoId('');
+    setIsCustomEquipment(false);
+    setCustomEquipamentoTipo('Ar Condicionado Split Hi-Wall');
+    setCustomEquipamentoMarca('LG');
+    setCustomEquipamentoModelo('');
+    setCustomEquipamentoCapacidade('12.000 BTU');
+    setCustomEquipamentoLocalizacao('');
     setStatus(isOrcamentosMode ? 'orcamento' : 'aprovado');
     setDescricaoProblema('');
     setDescricaoServico('');
@@ -242,7 +264,15 @@ export default function OrdensServicoTab({
     ev.stopPropagation();
     setEditingOS(os);
     setClienteId(os.clienteId);
+    setIsCustomClient(false);
+    setCustomClienteNome('');
     setEquipamentoId(os.equipamentoId);
+    setIsCustomEquipment(false);
+    setCustomEquipamentoTipo('Ar Condicionado Split Hi-Wall');
+    setCustomEquipamentoMarca('LG');
+    setCustomEquipamentoModelo('');
+    setCustomEquipamentoCapacidade('12.000 BTU');
+    setCustomEquipamentoLocalizacao('');
     setStatus(os.status);
     setDescricaoProblema(os.descricaoProblema);
     setDescricaoServico(os.descricaoServico || '');
@@ -281,14 +311,74 @@ export default function OrdensServicoTab({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clienteId || !descricaoProblema || !tecnicoResponsavel) {
+
+    let resolvedClienteId = clienteId;
+    let resolvedEquipamentoId = equipamentoId;
+
+    if (isCustomClient) {
+      if (!customClienteNome.trim()) {
+        alert('Por favor, informe o nome do cliente.');
+        return;
+      }
+      if (addCliente) {
+        const newCli = addCliente({
+          nome: customClienteNome.trim(),
+          telefone: '(não informado)',
+          documento: '',
+          email: '',
+          endereco: '',
+          cep: '',
+          cidade: 'São Paulo - SP',
+          notas: ''
+        });
+        resolvedClienteId = newCli.id;
+      } else {
+        alert('Erro: não foi possível adicionar o cliente.');
+        return;
+      }
+    }
+
+    if (!resolvedClienteId) {
+      alert('Por favor, selecione ou informe o cliente.');
+      return;
+    }
+
+    if (isCustomEquipment) {
+      if (!customEquipamentoModelo.trim()) {
+        alert('Por favor, informe o modelo do novo equipamento.');
+        return;
+      }
+      if (addEquipamento) {
+        const newEquip = addEquipamento({
+          clienteId: resolvedClienteId,
+          tipo: customEquipamentoTipo,
+          marca: customEquipamentoMarca,
+          modelo: customEquipamentoModelo.trim(),
+          numeroSerie: 'S/N',
+          capacidade: customEquipamentoCapacidade,
+          btus: customEquipamentoCapacidade?.replace(/[^0-9]/g, '') || '12000',
+          gas: 'R410A',
+          tensao: '220V',
+          localizacao: customEquipamentoLocalizacao.trim(),
+          dataInstalacao: new Date().toISOString().split('T')[0],
+          ultimaManutencao: new Date().toISOString().split('T')[0],
+          proximaManutencao: ''
+        });
+        resolvedEquipamentoId = newEquip.id;
+      } else {
+        alert('Erro: não foi possível adicionar o equipamento.');
+        return;
+      }
+    }
+
+    if (!descricaoProblema || !tecnicoResponsavel) {
       alert('Preencha os dados obrigatórios.');
       return;
     }
 
     const payload = {
-      clienteId,
-      equipamentoId,
+      clienteId: resolvedClienteId,
+      equipamentoId: resolvedEquipamentoId,
       status,
       descricaoProblema,
       descricaoServico: descricaoServico || undefined,
@@ -518,58 +608,202 @@ export default function OrdensServicoTab({
 
                   {/* Cliente */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Cliente Solicitante *</label>
-                    <select
-                      required
-                      value={clienteId}
-                      onChange={(e) => {
-                        setClienteId(e.target.value);
-                        setEquipamentoId(''); // Reset appliance link on client swap
-                      }}
-                      className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                    >
-                      {clientes.map(c => (
-                        <option key={c.id} value={c.id}>{c.nome}</option>
-                      ))}
-                    </select>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-xs font-semibold text-gray-700">Cliente Solicitante *</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = !isCustomClient;
+                          setIsCustomClient(val);
+                          setClienteId('');
+                          setCustomClienteNome('');
+                          if (val) {
+                            setIsCustomEquipment(true); // Auto-toggle equipment registration for new clients
+                          }
+                        }}
+                        className="text-[10px] text-frost-600 hover:text-frost-700 font-bold underline cursor-pointer"
+                      >
+                        {isCustomClient ? 'Selecionar Cliente Existente' : '+ Escrever Nome do Cliente'}
+                      </button>
+                    </div>
+
+                    {!isCustomClient ? (
+                      <select
+                        required={!isCustomClient}
+                        value={clienteId}
+                        onChange={(e) => {
+                          setClienteId(e.target.value);
+                          setEquipamentoId(''); // Reset appliance link on client swap
+                        }}
+                        className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-frost-500"
+                      >
+                        <option value="">-- Selecione o Cliente --</option>
+                        {clientes.map(c => (
+                          <option key={c.id} value={c.id}>{c.nome}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        required={isCustomClient}
+                        value={customClienteNome}
+                        onChange={(e) => setCustomClienteNome(e.target.value)}
+                        placeholder="Digite o nome completo do novo cliente"
+                        className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-frost-500"
+                      />
+                    )}
                   </div>
 
                   {/* Equipamento */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Equipamento para Reparo *</label>
-                    <select
-                      required
-                      value={equipamentoId}
-                      onChange={(e) => setEquipamentoId(e.target.value)}
-                      className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                    >
-                      <option value="">-- Selecione o aparelho --</option>
-                      {availableEquipments.map(eq => (
-                        <option key={eq.id} value={eq.id}>
-                          {eq.tipo} ({eq.marca} • {eq.capacidade} - {eq.localizacao})
-                        </option>
-                      ))}
-                    </select>
-                    {availableEquipments.length === 0 && clienteId && (
-                      <span className="text-[10px] text-amber-600 block mt-1 italic">
-                        ⚠️ Este cliente não possui aparelhos cadastrados. Cadastre na aba Equipamentos para poder vinculá-lo aqui.
-                      </span>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-xs font-semibold text-gray-700">Equipamento para Reparo *</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomEquipment(!isCustomEquipment);
+                          setEquipamentoId('');
+                          setCustomEquipamentoModelo('');
+                        }}
+                        className="text-[10px] text-frost-600 hover:text-frost-700 font-bold underline cursor-pointer"
+                      >
+                        {isCustomEquipment ? 'Selecionar Aparelho Existente' : '+ Cadastrar Aparelho na Hora'}
+                      </button>
+                    </div>
+
+                    {!isCustomEquipment ? (
+                      <>
+                        <select
+                          required={!isCustomEquipment}
+                          value={equipamentoId}
+                          onChange={(e) => setEquipamentoId(e.target.value)}
+                          className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-frost-500"
+                        >
+                          <option value="">-- Selecione o aparelho --</option>
+                          {availableEquipments.map(eq => (
+                            <option key={eq.id} value={eq.id}>
+                              {eq.tipo} ({eq.marca} • {eq.capacidade} - {eq.localizacao})
+                            </option>
+                          ))}
+                        </select>
+                        {availableEquipments.length === 0 && clienteId && (
+                          <span className="text-[10px] text-amber-600 block mt-1 italic">
+                            ⚠️ Este cliente não possui aparelhos cadastrados. Use o botão acima para cadastrar um aparelho na hora ou vá na aba Equipamentos.
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3 mt-1">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Tipo de Aparelho</label>
+                          <input
+                            type="text"
+                            required={isCustomEquipment}
+                            list="os-tipos-presets"
+                            value={customEquipamentoTipo}
+                            onChange={(e) => setCustomEquipamentoTipo(e.target.value)}
+                            placeholder="Ex: Ar Condicionado Split Hi-Wall"
+                            className="block w-full px-2.5 py-1.5 border border-gray-300 rounded-md text-xs bg-white"
+                          />
+                          <datalist id="os-tipos-presets">
+                            <option value="Ar Condicionado Split Hi-Wall" />
+                            <option value="Ar Condicionado Split Cassete" />
+                            <option value="Ar Condicionado Split Piso Teto" />
+                            <option value="Ar Condicionado Janela (ACJ)" />
+                            <option value="Ar Condicionado Multi-Split" />
+                            <option value="Chiller / Fan Coil" />
+                            <option value="Câmara Fria Comercial" />
+                            <option value="Geladeira / Freezer Comercial" />
+                          </datalist>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Marca</label>
+                            <input
+                              type="text"
+                              required={isCustomEquipment}
+                              list="os-marcas-presets"
+                              value={customEquipamentoMarca}
+                              onChange={(e) => setCustomEquipamentoMarca(e.target.value)}
+                              placeholder="Ex: LG, Midea"
+                              className="block w-full px-2.5 py-1.5 border border-gray-300 rounded-md text-xs bg-white"
+                            />
+                            <datalist id="os-marcas-presets">
+                              <option value="LG" />
+                              <option value="Samsung" />
+                              <option value="Carrier" />
+                              <option value="Midea" />
+                              <option value="Daikin" />
+                              <option value="Springer" />
+                              <option value="Consul" />
+                              <option value="Elgin" />
+                            </datalist>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Capacidade / BTUs</label>
+                            <input
+                              type="text"
+                              required={isCustomEquipment}
+                              list="os-capacidades-presets"
+                              value={customEquipamentoCapacidade}
+                              onChange={(e) => setCustomEquipamentoCapacidade(e.target.value)}
+                              placeholder="Ex: 12.000 BTU"
+                              className="block w-full px-2.5 py-1.5 border border-gray-300 rounded-md text-xs bg-white"
+                            />
+                            <datalist id="os-capacidades-presets">
+                              <option value="9.000 BTU" />
+                              <option value="12.000 BTU" />
+                              <option value="18.000 BTU" />
+                              <option value="22.000 BTU" />
+                              <option value="24.000 BTU" />
+                              <option value="30.000 BTU" />
+                              <option value="36.000 BTU" />
+                              <option value="60.000 BTU" />
+                            </datalist>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Modelo Comercial *</label>
+                          <input
+                            type="text"
+                            required={isCustomEquipment}
+                            value={customEquipamentoModelo}
+                            onChange={(e) => setCustomEquipamentoModelo(e.target.value)}
+                            placeholder="Ex: WindFree Connect Inverter"
+                            className="block w-full px-2.5 py-1.5 border border-gray-300 rounded-md text-xs bg-white placeholder-gray-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Localização (Ambiente)</label>
+                          <input
+                            type="text"
+                            value={customEquipamentoLocalizacao}
+                            onChange={(e) => setCustomEquipamentoLocalizacao(e.target.value)}
+                            placeholder="Ex: Sala de Reuniões, Quarto, Consultório"
+                            className="block w-full px-2.5 py-1.5 border border-gray-300 rounded-md text-xs bg-white placeholder-gray-400"
+                          />
+                        </div>
+                      </div>
                     )}
                   </div>
 
                   {/* Técnico Responsável */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">Técnico Responsável *</label>
-                    <select
+                    <input
+                      type="text"
                       required
+                      list="os-tecnicos-presets"
                       value={tecnicoResponsavel}
                       onChange={(e) => setTecnicoResponsavel(e.target.value)}
-                      className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                    >
+                      placeholder="Digite o nome do técnico responsável"
+                      className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-frost-500"
+                    />
+                    <datalist id="os-tecnicos-presets">
                       {TECNICOS_PRESET.map(t => (
-                        <option key={t} value={t}>{t}</option>
+                        <option key={t} value={t} />
                       ))}
-                    </select>
+                    </datalist>
                   </div>
                 </div>
 

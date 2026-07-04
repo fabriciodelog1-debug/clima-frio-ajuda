@@ -8,6 +8,7 @@ interface EquipamentosTabProps {
   addEquipamento: (e: Omit<Equipamento, 'id'>) => void;
   updateEquipamento: (id: string, e: Partial<Equipamento>) => void;
   deleteEquipamento: (id: string) => void;
+  addCliente?: (c: Omit<Cliente, 'id' | 'dataCriacao'>) => Cliente;
 }
 
 export default function EquipamentosScreen({
@@ -15,7 +16,8 @@ export default function EquipamentosScreen({
   clientes,
   addEquipamento,
   updateEquipamento,
-  deleteEquipamento
+  deleteEquipamento,
+  addCliente
 }: EquipamentosTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientFilter, setSelectedClientFilter] = useState('');
@@ -24,6 +26,9 @@ export default function EquipamentosScreen({
 
   // Form states
   const [clienteId, setClienteId] = useState('');
+  const [isCustomClient, setIsCustomClient] = useState(false);
+  const [customClienteNome, setCustomClienteNome] = useState('');
+  
   const [tipo, setTipo] = useState('');
   const [marca, setMarca] = useState('');
   const [modelo, setModelo] = useState('');
@@ -61,6 +66,8 @@ export default function EquipamentosScreen({
   const handleOpenCreate = () => {
     setEditingEquipamento(null);
     setClienteId(clientes[0]?.id || '');
+    setIsCustomClient(clientes.length === 0);
+    setCustomClienteNome('');
     setTipo(TIPOS_PRESET[0]);
     setMarca(MARCAS_PRESET[0]);
     setModelo('');
@@ -82,6 +89,8 @@ export default function EquipamentosScreen({
   const handleOpenEdit = (e: Equipamento) => {
     setEditingEquipamento(e);
     setClienteId(e.clienteId);
+    setIsCustomClient(false);
+    setCustomClienteNome('');
     setTipo(e.tipo);
     setMarca(e.marca);
     setModelo(e.modelo);
@@ -99,13 +108,39 @@ export default function EquipamentosScreen({
 
   const handleSave = (ev: React.FormEvent) => {
     ev.preventDefault();
-    if (!clienteId || !tipo || !marca || !modelo) {
+    
+    let resolvedClienteId = clienteId;
+
+    if (isCustomClient) {
+      if (!customClienteNome.trim()) {
+        alert('Por favor, informe o nome do cliente.');
+        return;
+      }
+      if (addCliente) {
+        const newCli = addCliente({
+          nome: customClienteNome.trim(),
+          telefone: '(não informado)',
+          documento: '',
+          email: '',
+          endereco: '',
+          cep: '',
+          cidade: 'São Paulo - SP',
+          notas: ''
+        });
+        resolvedClienteId = newCli.id;
+      } else {
+        alert('Erro: Não foi possível adicionar o cliente.');
+        return;
+      }
+    }
+
+    if (!resolvedClienteId || !tipo || !marca || !modelo) {
       alert('Por favor, preencha todos os campos obrigatórios (Cliente, Tipo, Marca e Modelo).');
       return;
     }
 
     const payload = {
-      clienteId,
+      clienteId: resolvedClienteId,
       tipo,
       marca,
       modelo,
@@ -320,45 +355,81 @@ export default function EquipamentosScreen({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Cliente Link */}
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Proprietário / Cliente *</label>
-                  <select
-                    required
-                    value={clienteId}
-                    onChange={(e) => setClienteId(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-frost-500"
-                  >
-                    {clientes.map(c => (
-                      <option key={c.id} value={c.id}>{c.nome}</option>
-                    ))}
-                  </select>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">Proprietário / Cliente *</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomClient(!isCustomClient);
+                        setClienteId('');
+                        setCustomClienteNome('');
+                      }}
+                      className="text-[10px] text-frost-600 hover:text-frost-700 font-bold underline cursor-pointer"
+                    >
+                      {isCustomClient ? 'Selecionar Cliente Existente' : '+ Escrever Nome do Cliente'}
+                    </button>
+                  </div>
+                  
+                  {!isCustomClient ? (
+                    <select
+                      required={!isCustomClient}
+                      value={clienteId}
+                      onChange={(e) => setClienteId(e.target.value)}
+                      className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-frost-500"
+                    >
+                      <option value="">-- Selecione o Cliente --</option>
+                      {clientes.map(c => (
+                        <option key={c.id} value={c.id}>{c.nome}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      required={isCustomClient}
+                      value={customClienteNome}
+                      onChange={(e) => setCustomClienteNome(e.target.value)}
+                      placeholder="Digite o nome completo do cliente"
+                      className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-frost-500"
+                    />
+                  )}
                 </div>
 
                 {/* Tipo de Equipamento */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Tipo de Equipamento *</label>
-                  <select
+                  <input
+                    type="text"
+                    required
+                    list="tipos-presets"
                     value={tipo}
                     onChange={(e) => setTipo(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-frost-500"
-                  >
+                    placeholder="Ex: Ar Condicionado Split"
+                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-frost-500"
+                  />
+                  <datalist id="tipos-presets">
                     {TIPOS_PRESET.map(t => (
-                      <option key={t} value={t}>{t}</option>
+                      <option key={t} value={t} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
 
                 {/* Marca */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Marca / Fabricante *</label>
-                  <select
+                  <input
+                    type="text"
+                    required
+                    list="marcas-presets"
                     value={marca}
                     onChange={(e) => setMarca(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-frost-500"
-                  >
+                    placeholder="Ex: LG, Samsung, Midea"
+                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-frost-500"
+                  />
+                  <datalist id="marcas-presets">
                     {MARCAS_PRESET.map(m => (
-                      <option key={m} value={m}>{m}</option>
+                      <option key={m} value={m} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
 
                 {/* Modelo */}
@@ -377,15 +448,26 @@ export default function EquipamentosScreen({
                 {/* Capacidade */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Capacidade de Resfriamento *</label>
-                  <select
+                  <input
+                    type="text"
+                    required
+                    list="capacidades-presets"
                     value={capacidade}
-                    onChange={(e) => setCapacidade(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-frost-500"
-                  >
+                    onChange={(e) => {
+                      setCapacidade(e.target.value);
+                      const numericVal = e.target.value.replace(/[^0-9]/g, '');
+                      if (numericVal) {
+                        setBtus(numericVal);
+                      }
+                    }}
+                    placeholder="Ex: 12.000 BTU, 18.000 BTU"
+                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-frost-500"
+                  />
+                  <datalist id="capacidades-presets">
                     {CAPACIDADES_PRESET.map(cap => (
-                      <option key={cap} value={cap}>{cap}</option>
+                      <option key={cap} value={cap} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
 
                 {/* Número de Série */}
@@ -402,7 +484,7 @@ export default function EquipamentosScreen({
 
                 {/* Localização */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Localização na Planta</label>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Localização (Ambiente / Planta)</label>
                   <input
                     type="text"
                     value={localizacao}
@@ -419,7 +501,7 @@ export default function EquipamentosScreen({
                     type="date"
                     value={dataInstalacao}
                     onChange={(e) => setDataInstalacao(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none"
+                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-frost-500"
                   />
                 </div>
 
@@ -430,38 +512,46 @@ export default function EquipamentosScreen({
                     type="date"
                     value={ultimaManutencao}
                     onChange={(e) => setUltimaManutencao(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none"
+                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-frost-500"
                   />
                 </div>
 
                 {/* Gás Refrigerante */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Gás Refrigerante</label>
-                  <select
+                  <input
+                    type="text"
+                    list="gases-presets"
                     value={gas}
                     onChange={(e) => setGas(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none"
-                  >
-                    <option value="R410A">R410A</option>
-                    <option value="R22">R22</option>
-                    <option value="R32">R32</option>
-                    <option value="R407C">R407C</option>
-                    <option value="R134a">R134a</option>
-                  </select>
+                    placeholder="Ex: R410A, R22, R32"
+                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-frost-500"
+                  />
+                  <datalist id="gases-presets">
+                    <option value="R410A" />
+                    <option value="R22" />
+                    <option value="R32" />
+                    <option value="R407C" />
+                    <option value="R134a" />
+                  </datalist>
                 </div>
 
                 {/* Tensão Elétrica */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Tensão Elétrica</label>
-                  <select
+                  <input
+                    type="text"
+                    list="tensoes-presets"
                     value={tensao}
                     onChange={(e) => setTensao(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none"
-                  >
-                    <option value="220V">220V</option>
-                    <option value="110V">110V</option>
-                    <option value="380V">380V</option>
-                  </select>
+                    placeholder="Ex: 220V, 110V"
+                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-frost-500"
+                  />
+                  <datalist id="tensoes-presets">
+                    <option value="220V" />
+                    <option value="110V" />
+                    <option value="380V" />
+                  </datalist>
                 </div>
 
                 {/* Próxima Manutenção */}
@@ -471,7 +561,7 @@ export default function EquipamentosScreen({
                     type="date"
                     value={proximaManutencao}
                     onChange={(e) => setProximaManutencao(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none"
+                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-frost-500"
                   />
                 </div>
 
@@ -483,7 +573,7 @@ export default function EquipamentosScreen({
                     value={btus}
                     onChange={(e) => setBtus(e.target.value.replace(/[^0-9]/g, ''))}
                     placeholder="Ex: 12000"
-                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white placeholder-gray-400 focus:outline-none"
+                    className="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-frost-500"
                   />
                 </div>
               </div>

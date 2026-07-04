@@ -7,7 +7,7 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ onLogin }: LoginScreenProps) {
-  const [operatorName, setOperatorName] = useState('Fabrício Santos');
+  const [operatorName, setOperatorName] = useState('');
   const [operatorRole, setOperatorRole] = useState<'admin' | 'tecnico' | 'gerente'>('admin');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');

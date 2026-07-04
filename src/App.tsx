@@ -96,6 +96,7 @@ export default function App() {
             addEquipamento={store.addEquipamento}
             updateEquipamento={store.updateEquipamento}
             deleteEquipamento={store.deleteEquipamento}
+            addCliente={store.addCliente}
           />
         );
       case 'agenda':
@@ -119,6 +120,8 @@ export default function App() {
             addOrdemServico={store.addOrdemServico}
             updateOrdemServico={store.updateOrdemServico}
             deleteOrdemServico={store.deleteOrdemServico}
+            addCliente={store.addCliente}
+            addEquipamento={store.addEquipamento}
           />
         );
       case 'orcamentos':
@@ -131,6 +134,8 @@ export default function App() {
             addOrdemServico={store.addOrdemServico}
             updateOrdemServico={store.updateOrdemServico}
             deleteOrdemServico={store.deleteOrdemServico}
+            addCliente={store.addCliente}
+            addEquipamento={store.addEquipamento}
           />
         );
       case 'relatorios':
